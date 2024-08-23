@@ -1,0 +1,466 @@
+<html><head><base href="https://websimcreationengine.com/farmgame/">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Ma Petite Ferme - Jeu de Gestion Agricole</title>
+<style>
+  body {
+    font-family: Arial, sans-serif;
+    background-color: #e8f4e5;
+    margin: 0;
+    padding: 20px;
+  }
+  #game-container {
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: #fff;
+    border-radius: 10px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+  h1, h2, h3 {
+    color: #4a7c30;
+    text-align: center;
+  }
+  #stats, #crops {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+  .stat, .crop {
+    background-color: #d4edda;
+    padding: 10px;
+    border-radius: 5px;
+    margin: 5px;
+    flex: 1 1 calc(25% - 10px);
+  }
+  #actions {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  button {
+    background-color: #4a7c30;
+    color: white;
+    border: none;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.3s;
+  }
+  button:hover {
+    background-color: #3a6124;
+  }
+  button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+  }
+  #market, #clients {
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    padding: 10px;
+    border-radius: 5px;
+  }
+  #fields {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+  }
+  .field {
+    width: 100%;
+    aspect-ratio: 1;
+    background-color: #8b4513;
+    border-radius: 5px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 12px;
+    text-align: center;
+    cursor: pointer;
+    position: relative;
+  }
+  .field.planted {
+    background-color: #228B22;
+  }
+  .field-timer {
+    font-size: 10px;
+    margin-top: 5px;
+  }
+  .client-category {
+    margin-bottom: 15px;
+  }
+  .client-category h3 {
+    margin-bottom: 5px;
+    text-align: left;
+    border-bottom: 1px solid #4a7c30;
+  }
+  .client-requests {
+    list-style-type: none;
+    padding-left: 0;
+  }
+  .client-requests li {
+    margin-bottom: 5px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #save-info {
+    text-align: center;
+    color: #4a7c30;
+    font-style: italic;
+    margin-top: 10px;
+  }
+  #upgrade-info {
+    color: #d9534f;
+    font-weight: bold;
+  }
+</style>
+</head>
+<body>
+<div id="game-container">
+  <h1>Ma Petite Ferme</h1>
+  
+  <div id="stats">
+    <div class="stat">Solde: <span id="balance">1000</span> €</div>
+    <div class="stat">Engrais: <span id="fertilizer">0</span> kg</div>
+    <div class="stat">Lait: <span id="milk">0</span> L</div>
+    <div class="stat">Œufs: <span id="eggs">0</span></div>
+  </div>
+  
+  <div id="crops">
+    <div class="crop">Maïs: <span id="corn">0</span> kg</div>
+    <div class="crop">Blé: <span id="wheat">0</span> kg</div>
+  </div>
+  
+  <div id="actions">
+    <button onclick="buyFertilizer()">Acheter de l'engrais</button>
+    <button onclick="upgradeFarm()">Améliorer la ferme</button>
+    <button onclick="buyAnimal('cow')">Acheter une vache</button>
+    <button onclick="buyAnimal('chicken')">Acheter une poule</button>
+    <button onclick="sellCrop('corn')">Vendre le maïs</button>
+    <button onclick="sellCrop('wheat')">Vendre le blé</button>
+    <button onclick="plantCrop('corn')">Planter du maïs</button>
+    <button onclick="plantCrop('wheat')">Planter du blé</button>
+  </div>
+  
+  <div id="fields"></div>
+  
+  <div id="market">
+    <h2>Marché</h2>
+    <p>Prix de l'engrais: <span id="fertilizer-price">5</span> €/kg</p>
+    <p>Prix du lait: <span id="milk-price">2</span> €/L</p>
+    <p>Prix des œufs: <span id="egg-price">0.5</span> €/unité</p>
+    <p>Prix du maïs: <span id="corn-price">3</span> €/kg</p>
+    <p>Prix du blé: <span id="wheat-price">2.5</span> €/kg</p>
+    <p>Prix d'une vache: 500 €</p>
+    <p>Prix d'une poule: 50 €</p>
+    <p>Coût de plantation du maïs: <span id="corn-planting-cost">15</span> €</p>
+    <p>Coût de plantation du blé: <span id="wheat-planting-cost">12</span> €</p>
+    <p id="upgrade-info">Coût d'amélioration de la ferme: <span id="upgrade-cost">10000</span> €</p>
+  </div>
+  
+  <div id="clients">
+    <h2>Demandes des clients</h2>
+    <div id="milk-requests" class="client-category">
+      <h3>Lait</h3>
+      <ul class="client-requests"></ul>
+    </div>
+    <div id="eggs-requests" class="client-category">
+      <h3>Œufs</h3>
+      <ul class="client-requests"></ul>
+    </div>
+    <div id="corn-requests" class="client-category">
+      <h3>Maïs</h3>
+      <ul class="client-requests"></ul>
+    </div>
+    <div id="wheat-requests" class="client-category">
+      <h3>Blé</h3>
+      <ul class="client-requests"></ul>
+    </div>
+  </div>
+
+  <div id="save-info">Sauvegarde automatique activée</div>
+</div>
+
+<script>
+let gameState = {
+  balance: 1000,
+  fertilizer: 0,
+  milk: 0,
+  eggs: 0,
+  corn: 0,
+  wheat: 0,
+  cows: 0,
+  chickens: 0,
+  farmLevel: 1,
+  fields: Array(5).fill(null)
+};
+
+const FERTILIZER_PER_PLANTATION = 2;
+const BASE_UPGRADE_COST = 10000;
+
+function updateDisplay() {
+  document.getElementById('balance').textContent = gameState.balance.toFixed(2);
+  document.getElementById('fertilizer').textContent = gameState.fertilizer;
+  document.getElementById('milk').textContent = gameState.milk.toFixed(1);
+  document.getElementById('eggs').textContent = gameState.eggs;
+  document.getElementById('corn').textContent = gameState.corn.toFixed(1);
+  document.getElementById('wheat').textContent = gameState.wheat.toFixed(1);
+  updateFieldsDisplay();
+  updateUpgradeCost();
+}
+
+function updateFieldsDisplay() {
+  const fieldsContainer = document.getElementById('fields');
+  fieldsContainer.innerHTML = '';
+  gameState.fields.forEach((field, index) => {
+    const fieldElement = document.createElement('div');
+    fieldElement.className = 'field' + (field ? ' planted' : '');
+    fieldElement.onclick = () => harvestCrop(index);
+    
+    if (field) {
+      fieldElement.innerHTML = `${field.type === 'corn' ? 'Maïs' : 'Blé'}<br>${field.growth.toFixed(0)}%<br>Engrais: ${field.fertilizer}`;
+      if (field.growth < 100) {
+        const timerElement = document.createElement('div');
+        timerElement.className = 'field-timer';
+        timerElement.textContent = `${Math.ceil((100 - field.growth) / 10)} sec`;
+        fieldElement.appendChild(timerElement);
+      }
+    } else {
+      fieldElement.textContent = 'Vide';
+    }
+    
+    fieldsContainer.appendChild(fieldElement);
+  });
+}
+
+function updateUpgradeCost() {
+  const upgradeCost = BASE_UPGRADE_COST * Math.pow(2, gameState.farmLevel - 1);
+  document.getElementById('upgrade-cost').textContent = upgradeCost.toFixed(0);
+}
+
+function buyFertilizer() {
+  const price = parseFloat(document.getElementById('fertilizer-price').textContent);
+  const amount = Math.floor(Math.random() * 10) + 1;
+  const cost = price * amount;
+  
+  if (gameState.balance >= cost) {
+    gameState.balance -= cost;
+    gameState.fertilizer += amount;
+    updateDisplay();
+    alert(`Vous avez acheté ${amount} kg d'engrais pour ${cost.toFixed(2)} €`);
+  } else {
+    alert("Fonds insuffisants pour acheter de l'engrais !");
+  }
+}
+
+function upgradeFarm() {
+  const upgradeCost = BASE_UPGRADE_COST * Math.pow(2, gameState.farmLevel - 1);
+  if (gameState.balance >= upgradeCost) {
+    gameState.balance -= upgradeCost;
+    gameState.farmLevel++;
+    updateDisplay();
+    alert(`Ferme améliorée au niveau ${gameState.farmLevel} !`);
+  } else {
+    alert("Fonds insuffisants pour améliorer la ferme !");
+  }
+}
+
+function buyAnimal(type) {
+  const cowCost = 500;
+  const chickenCost = 50;
+  let cost = type === 'cow' ? cowCost : chickenCost;
+  
+  if (gameState.balance >= cost) {
+    gameState.balance -= cost;
+    if (type === 'cow') {
+      gameState.cows++;
+      alert("Vous avez acheté une vache !");
+    } else {
+      gameState.chickens++;
+      alert("Vous avez acheté une poule !");
+    }
+    updateDisplay();
+  } else {
+    alert("Fonds insuffisants pour acheter cet animal !");
+  }
+}
+
+function plantCrop(cropType) {
+  const emptyFieldIndex = gameState.fields.findIndex(field => field === null);
+  if (emptyFieldIndex === -1) {
+    alert("Tous les champs sont déjà plantés !");
+    return;
+  }
+  
+  const plantingCost = cropType === 'corn' 
+    ? parseFloat(document.getElementById('corn-planting-cost').textContent)
+    : parseFloat(document.getElementById('wheat-planting-cost').textContent);
+
+  if (gameState.balance >= plantingCost && gameState.fertilizer >= FERTILIZER_PER_PLANTATION) {
+    gameState.balance -= plantingCost;
+    gameState.fertilizer -= FERTILIZER_PER_PLANTATION;
+    gameState.fields[emptyFieldIndex] = { 
+      type: cropType, 
+      growth: 0, 
+      fertilizer: FERTILIZER_PER_PLANTATION 
+    };
+    updateDisplay();
+    alert(`Vous avez planté du ${cropType === 'corn' ? 'maïs' : 'blé'} pour ${plantingCost.toFixed(2)} € avec ${FERTILIZER_PER_PLANTATION} kg d'engrais !`);
+  } else {
+    if (gameState.balance < plantingCost) {
+      alert(`Fonds insuffisants pour planter ! Il faut ${plantingCost.toFixed(2)} €.`);
+    } else {
+      alert(`Pas assez d'engrais ! Il faut ${FERTILIZER_PER_PLANTATION} kg d'engrais pour planter.`);
+    }
+  }
+}
+
+function harvestCrop(fieldIndex) {
+  const field = gameState.fields[fieldIndex];
+  if (field && field.growth >= 100) {
+    let harvestAmount = field.type === 'corn' ? (Math.random() * 5 + 5) : (Math.random() * 4 + 4);
+    harvestAmount *= (1 + field.fertilizer * 0.1);
+    gameState[field.type] += harvestAmount;
+    gameState.fields[fieldIndex] = null;
+    updateDisplay();
+    alert(`Vous avez récolté ${harvestAmount.toFixed(1)} kg de ${field.type === 'corn' ? 'maïs' : 'blé'} !`);
+  } else if (field) {
+    alert("Cette récolte n'est pas encore prête !");
+  }
+}
+
+function sellCrop(type) {
+  const cornPrice = parseFloat(document.getElementById('corn-price').textContent);
+  const wheatPrice = parseFloat(document.getElementById('wheat-price').textContent);
+  
+  if (type === 'corn' && gameState.corn > 0) {
+    const income = gameState.corn * cornPrice;
+    gameState.balance += income;
+    gameState.corn = 0;
+    updateDisplay();
+    alert(`Vous avez vendu tout votre maïs pour ${income.toFixed(2)} € !`);
+  } else if (type === 'wheat' && gameState.wheat > 0) {
+    const income = gameState.wheat * wheatPrice;
+    gameState.balance += income;
+    gameState.wheat = 0;
+    updateDisplay();
+    alert(`Vous avez vendu tout votre blé pour ${income.toFixed(2)} € !`);
+  } else {
+    alert(`Pas de ${type === 'corn' ? 'maïs' : 'blé'} à vendre !`);
+  }
+}
+
+function generateClientRequest() {
+  const products = ['milk', 'eggs', 'corn', 'wheat'];
+  const product = products[Math.floor(Math.random() * products.length)];
+  const amount = Math.floor(Math.random() * 10) + 1;
+  let price;
+  switch(product) {
+    case 'milk': price = parseFloat(document.getElementById('milk-price').textContent); break;
+    case 'eggs': price = parseFloat(document.getElementById('egg-price').textContent); break;
+    case 'corn': price = parseFloat(document.getElementById('corn-price').textContent); break;
+    case 'wheat': price = parseFloat(document.getElementById('wheat-price').textContent); break;
+  }
+  const total = amount * price;
+  
+  const request = document.createElement('li');
+  request.innerHTML = `${amount} ${product === 'milk' ? 'L de lait' : product === 'eggs' ? 'œufs' : 'kg de ' + (product === 'corn' ? 'maïs' : 'blé')} pour ${total.toFixed(2)} € `;
+  const fulfillButton = document.createElement('button');
+  fulfillButton.textContent = 'Satisfaire';
+  fulfillButton.onclick = () => fulfillRequest(product, amount, total);
+  request.appendChild(fulfillButton);
+  
+  document.querySelector(`#${product}-requests .client-requests`).appendChild(request);
+}
+
+function fulfillRequest(product, amount, total) {
+  let canFulfill = false;
+  switch(product) {
+    case 'milk': canFulfill = gameState.milk >= amount; break;
+    case 'eggs': canFulfill = gameState.eggs >= amount; break;
+    case 'corn': canFulfill = gameState.corn >= amount; break;
+    case 'wheat': canFulfill = gameState.wheat >= amount; break;
+  }
+  
+  if (canFulfill) {
+    switch(product) {
+      case 'milk': gameState.milk -= amount; break;
+      case 'eggs': gameState.eggs -= amount; break;
+      case 'corn': gameState.corn -= amount; break;
+      case 'wheat': gameState.wheat -= amount; break;
+    }
+    gameState.balance += total;
+    updateDisplay();
+    alert(`Demande satisfaite ! Vous avez gagné ${total.toFixed(2)} €`);
+    event.target.parentNode.remove();
+  } else {
+    alert("Vous n'avez pas assez de produits pour satisfaire cette demande !");
+  }
+}
+
+function produceMilkAndEggs() {
+  gameState.milk += gameState.cows * (Math.random() * 2 + 1);
+  gameState.eggs += gameState.chickens * Math.floor(Math.random() * 2 + 1);
+  updateDisplay();
+}
+
+function updateMarketPrices() {
+  document.getElementById('fertilizer-price').textContent = (Math.random() * 3 + 3).toFixed(2);
+  document.getElementById('milk-price').textContent = (Math.random() + 1.5).toFixed(2);
+  document.getElementById('egg-price').textContent = (Math.random() * 0.3 + 0.3).toFixed(2);
+  document.getElementById('corn-price').textContent = (Math.random() * 2 + 2).toFixed(2);
+  document.getElementById('wheat-price').textContent = (Math.random() * 1.5 + 1.5).toFixed(2);
+  
+  document.getElementById('corn-planting-cost').textContent = (Math.random() * 5 + 10).toFixed(2);
+  document.getElementById('wheat-planting-cost').textContent = (Math.random() * 4 + 8).toFixed(2);
+}
+
+function growCrops() {
+  gameState.fields.forEach((field, index) => {
+    if (field && field.growth < 100) {
+      let growthRate = 10 + (field.fertilizer * 0.5);
+      field.growth += growthRate;
+      if (field.growth > 100) field.growth = 100;
+    }
+  });
+  updateFieldsDisplay();
+}
+
+function saveGame() {
+  localStorage.setItem('farmGameSave', JSON.stringify(gameState));
+  console.log('Jeu sauvegardé');
+  document.getElementById('save-info').textContent = 'Jeu sauvegardé à ' + new Date().toLocaleTimeString();
+}
+
+function loadGame() {
+  const savedGame = localStorage.getItem('farmGameSave');
+  if (savedGame) {
+    gameState = JSON.parse(savedGame);
+    updateDisplay();
+    console.log('Jeu chargé');
+  }
+}
+
+setInterval(() => {
+  produceMilkAndEggs();
+  growCrops();
+  if (Math.random() < 0.3) {
+    generateClientRequest();
+  }
+}, 1000);
+
+setInterval(updateMarketPrices, 5000);
+
+setInterval(saveGame, 30000);
+
+loadGame();
+updateDisplay();
+updateFieldsDisplay();
+updateMarketPrices();
+</script>
+</body>
+</html>
